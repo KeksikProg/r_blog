@@ -9,6 +9,8 @@ SECRET_KEY = os.getenv('secret_key')
 
 DEBUG = True
 
+AUTH_USER_MODEL = 'main.Client'
+
 ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [

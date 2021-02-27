@@ -1,12 +1,18 @@
 from django.contrib.auth.models import AbstractUser
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+from django.contrib.contenttypes.models import ContentType
 from django.core.validators import RegexValidator
 from django.db import models
 from slugify import slugify
 
-from r_blog.main.utils import get_timestamp_path
+from .utils import get_timestamp_path
 
 
 class Client(AbstractUser):
+    friends = models.ManyToManyField(
+        'Client',
+        blank=True
+    )
     is_active = models.BooleanField(
         default=False,
         db_index=True,
@@ -61,7 +67,8 @@ class Rubric(models.Model):
 
 class Public(models.Model):
     users = models.ManyToManyField(
-        Client
+        Client,
+        blank=True
     )
     rubric = models.ForeignKey(
         Rubric,
@@ -83,7 +90,8 @@ class Public(models.Model):
         verbose_name='photo'
     )
     author = models.CharField(
-        verbose_name='author'
+        verbose_name='author',
+        max_length=255
     )
     slug = models.SlugField(
         unique=True,
@@ -100,7 +108,18 @@ class Public(models.Model):
         ordering = ['title']
 
 
+class Like(models.Model):
+    user = models.ForeignKey(Client,
+                             related_name='likes',
+                             on_delete=models.CASCADE)
+    content_type = models.ForeignKey(ContentType,
+                                     on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+
 class Post(models.Model):
+    likes = GenericRelation(Like)
     public = models.ForeignKey(
         Public,
         on_delete=models.CASCADE,
@@ -120,6 +139,10 @@ class Post(models.Model):
         verbose_name='created_at'
     )
 
+    @property
+    def total_likes(self):
+        return self.likes.count()
+
     def delete(self, *args, **kwargs):
         for ai in self.additionalimage_set.all():
             ai.delete()
@@ -129,3 +152,18 @@ class Post(models.Model):
         verbose_name = 'Post'
         verbose_name_plural = 'Posts'
         ordering = ['-created_at']
+
+
+class Comments(models.Model):
+    pass
+
+
+class FriendRequest(models.Model):
+    from_user = models.ForeignKey(
+        Client,
+        related_name='from_user',
+        on_delete=models.CASCADE)
+    to_user = models.ForeignKey(
+        Client,
+        related_name='to_user',
+        on_delete=models.CASCADE)
